@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eBoox Reader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 100%;
+            padding: 15px;
+        }
+        .hidden {
+            display: none;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: #4a90e2;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        nav {
+            display: flex;
+            flex-direction: column;
+            width: 70%;
+            background: white;
+            height: 100vh;
+            position: fixed;
+            left: -100%;
+            transition: left 0.3s;
+            padding-top: 60px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        nav.active {
+            left: 0;
+        }
+        .nav-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .hamburger {
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .book-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .book-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+        .book-cover {
+            width: 100%;
+            aspect-ratio: 2/3;
+            background: linear-gradient(45deg, #667eea, #764ba1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .book-info {
+            padding: 10px;
+        }
+        .progress-bar {
+            height: 5px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        .progress {
+            height: 100%;
+            background: #4a90e2;
+            width: 0%;
+        }
+        .reader-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f9f7ed;
+            display: flex;
+            flex-direction: column;
+            z-index: 999;
+        }
+        .reader-header {
+            background: #4a90e2;
+            color: white;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .reader-content {
+            flex: 1;
+            padding: 20px;
+            line-height: 1.6;
+            font-size: 18px;
+            text-align: justify;
+            overflow-y: auto;
+        }
+        .settings-screen, .add-book-screen {
+            background: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .setting-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        input[type="range"] {
+            width: 60%;
+        }
+        .file-upload {
+            margin: 20px 0;
+            padding: 15px;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            width: 100%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Главный экран (библиотека) -->
+    <div id="library-screen" class="container">
+        <header>
+            <div class="hamburger" onclick="toggleMenu()">☰</div>
+            <h1>Моя библиотека</h1>
+            <div onclick="showSection('add-book')">+</div>
+        </header>
+        
+        <div class="book-grid" id="booksContainer">
+            <!-- Книги будут добавляться через JS -->
+        </div>
+    </div>
+
+    <!-- Экран чтения -->
+    <div id="reader-screen" class="reader-screen hidden">
+        <div class="reader-header">
+            <span onclick="backToLibrary()">←</span>
+            <h2 id="currentBookTitle">Название книги</h2>
+            <span>⋮</span>
+        </div>
+        <div class="reader-content" id="readerContent">
+            <p>Это пример текста книги. Здесь будет отображаться содержимое выбранного файла.</p>
+        </div>
+    </div>
+
+    <!-- Настройки -->
+    <div id="settings-screen" class="settings-screen hidden">
+        <h2>Настройки</h2>
+        <div class="setting-item">
+            <span>Размер шрифта</span>
+            <input type="range" min="14" max="28" value="18" oninput="changeFontSize(this.value)">
+        </div>
+        <div class="setting-item">
+            <span>Тема</span>
+            <select onchange="changeTheme(this.value)">
+                <option value="light">Светлая</option>
+                <option value="dark">Тёмная</option>
+                <option value="sepia">Сепия</option>
+            </select>
+        </div>
+        <button onclick="backToLibrary()" style="margin-top: 20px;">Назад</button>
+    </div>
+
+    <!-- Добавление книги -->
+    <div id="add-book-screen" class="add-book-screen hidden">
+        <h2>Добавить книгу</h2>
+        <p>Поддерживаются форматы: TXT, PDF (просмотр только в браузере)</p>
+        <input type="file" class="file-upload" accept=".txt,.pdf" onchange="handleFileUpload(event)">
+        <button onclick="backToLibrary()">Назад</button>
+    </div>
+
+    <!-- Боковое меню -->
+    <nav id="menu">
+        <div class="nav-item" onclick="showSection('library')">Моя библиотека</div>
+        <div class="nav-item" onclick="showSection('reader')">Читать сейчас</div>
+        <div class="nav-item" onclick="showSection('settings')">Настройки</div>
+        <div class="nav-item" onclick="showSection('add-book')">Добавить книгу</div>
+    </nav>
+
+    <script>
+        // Данные приложения
+        let books = JSON.parse(localStorage.getItem('books')) || [];
+        let currentBook = null;
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            updateBooksGrid();
+        });
+
+        // Переключение экранов
+        function showSection(sectionId) {
+            document.querySelectorAll('.container, .reader-screen').forEach(el => {
+                el.classList.add('hidden');
+            });
+            document.getElementById(sectionId + '-screen').classList.remove('hidden');
+            if (sectionId !== 'library') {
+                document.getElementById('menu').classList.remove('active');
+            }
+        }
+
+        // Боковое меню
+        function toggleMenu() {
+            document.getElementById('menu').classList.toggle('active');
+        }
+
+        // Обновление сетки книг
+        function updateBooksGrid() {
+            const container = document.getElementById('booksContainer');
+            container.innerHTML = '';
+            
+            if (books.length === 0) {
+                container.innerHTML = '<p style="text-align: center; padding: 20px;">Ваша библиотека пуста. Добавьте книгу через меню.</p>';
+                return;
+            }
+            
+            books.forEach(book => {
+                const bookCard = document.createElement('div');
+                bookCard.className = 'book-card';
+                bookCard.onclick = () => openBook(book.id);
+                
+                bookCard.innerHTML = `
+                    <div class="book-cover">
+                <span>${book.title.substring(0, 3).toUpperCase()}</span>
+            </div>
+            <div class="book-info">
+                <h3>${book.title}</h3>
+                <p>${book.author || 'Автор неизвестен'}</p>
+                <div class="progress-bar">
+                    <div class="progress" style="width: ${book.progress || 0}%"></div>
+                </div>
+                <small>${book.progress || 0}% прочитано</small>
+            </div>
+        `;
+                container.appendChild(bookCard);
+            });
+        }
+
+        // Открытие книги для чтения
+        function openBook(bookId) {
+            currentBook = books.find(book => book.id === bookId);
+            if (!currentBook) return;
+            
+            document.getElementById('currentBookTitle').textContent = currentBook.title;
+            document.getElementById('readerContent').innerHTML = currentBook.content || '<p>Содержимое книги пока не загружено.</p>';
+            showSection('reader');
+        }
+
+        // Возврат в библиотеку
+        function backToLibrary() {
+            showSection('library');
+        }
+
+        // Изменение размера шрифта
+        function changeFontSize(size) {
+            document.getElementById('readerContent').style.fontSize = size + 'px';
+        }
+
+        // Изменение темы оформления
+        function changeTheme(theme) {
+            const reader = document.getElementById('reader-screen');
+            reader.className = 'reader-screen'; // Сброс классов
+            
+            switch (theme) {
+                case 'dark':
+                    reader.classList.add('dark-theme');
+            document.getElementById('readerContent').style.color = 'white';
+            document.getElementById('readerContent').style.background = '#333';
+            break;
+                case 'sepia':
+            reader.classList.add('sepia-theme');
+            document.getElementById('readerContent').style.background = '#f4e1d2';
+            document.getElementById('readerContent').style.color = '#5c4033';
+            break;
+                default:
+            reader.classList.add('light-theme');
+            document.getElementById('readerContent').style.color = '#333';
+            document.getElementById('readerContent').style.background = '#f9f7ed';
+            }
+        }
+
+        // Обработка загрузки файла
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                let content = '';
+                if (file.type === 'text/plain') {
+                    content = e.target.result;
+        } else if (file.type === 'application/pdf') {
+            content = '<p>PDF-файлы можно просматривать только в браузере. Для чтения используйте специальное приложение.</p>';
+        }
+        
+        const newBook = {
+            id: Date.now(),
+            title: file.name.replace(/\.[^.]+$/, ''), // Убираем расширение
+            author: 'Неизвестен',
+            content: content,
+            progress: 0
+        };
+        
+        books.push(newBook);
+        localStorage.setItem('books', JSON.stringify(books));
+        updateBooksGrid();
+        alert('Книга добавлена в библиотеку!');
+    };
+    
+    reader.readAsText(file);
+}
+
+// Сохранение прогресса чтения (упрощённая версия)
+function saveProgress(bookId, progress) {
+    const book = books.find(b => b.id === bookId);
+    if (book) {
+        book.progress = progress;
+        localStorage.setItem('books', JSON.stringify(books));
+    }
+}
+
+// Инициализация темы по умолчанию
+document.addEventListener('DOMContentLoaded', function() {
+    changeTheme('light'); // Устанавливаем светлую тему по умолчанию
+});
+    </script>
+</body>
+</html>
